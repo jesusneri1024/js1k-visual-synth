@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JS1k Visual Synth</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      width: 90vmin;
+      height: 90vmin;
+      image-rendering: pixelated;
+      display: block;
+    }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      z-index: 10;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="overlay">Click to start</div>
+<canvas id="c" width="512" height="512"></canvas>
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+let t = 0;
+const SCENE_DURATION = 600;
+const TRANSITION_DURATION = 60;
+
+function fadeOverlay(opacity) {
+  ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+  ctx.fillRect(0, 0, 512, 512);
+}
+
+function scene0(t) {
+  for (let i = 0; i < 200; i++) {
+    const x = Math.sin(t / 50 + i) * 100 + 256;
+    const y = Math.cos(t / 70 + i) * 100 + 256;
+    ctx.fillStyle = `hsl(${(i * 5 + t) % 360}, 100%, 50%)`;
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function scene1(t) {
+  for (let z = -10; z < 10; z++) {
+    for (let x = -10; x < 10; x++) {
+      const angle = t / 100 + (x + z) * 0.1;
+      const px = 256 + x * 10 * Math.cos(angle);
+      const py = 256 + z * 10 * Math.sin(angle);
+      ctx.fillStyle = `hsl(${(t + x * z) % 360}, 100%, 70%)`;
+      ctx.fillRect(px, py, 2, 2);
+    }
+  }
+}
+
+function scene2(t) {
+  for (let i = 0; i < 300; i++) {
+    const speed = (i % 7 + 1) * 0.5;
+    const x = (Math.random() * 512 + t * speed) % 512;
+    const y = Math.random() * 512;
+    ctx.fillStyle = `white`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+function scene3(t) {
+  const len = 200;
+  for (let i = 0; i < len; i++) {
+    const r = 100 + 50 * Math.sin(i / 10 + t / 50);
+    const a = i * 0.1;
+    const x = 256 + r * Math.cos(a);
+    const y = 256 + r * Math.sin(a);
+    ctx.fillStyle = `hsl(${(i * 2 + t) % 360}, 100%, 50%)`;
+    ctx.beginPath();
+    ctx.arc(x, y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function scene4(t) {
+  for (let i = 0; i < 150; i++) {
+    const d = i / 150;
+    const r = 200 * d;
+    const a = d * Math.PI * 2 + t / 100;
+    const x = 256 + r * Math.cos(a);
+    const y = 256 + r * Math.sin(a);
+    ctx.fillStyle = `hsl(${(t + i * 3) % 360}, 100%, 70%)`;
+    ctx.fillRect(x, y, 3, 3);
+  }
+}
+
+function scene5(t) {
+  for (let y = 0; y < 512; y += 16) {
+    for (let x = 0; x < 512; x += 16) {
+      const noise = Math.sin((x + y + t) * 0.02);
+      ctx.fillStyle = `hsl(${(noise * 50 + 200)}, 100%, ${50 + noise * 20}%)`;
+      ctx.fillRect(x, y, 16, 16);
+    }
+  }
+}
+
+const scenes = [scene0, scene1, scene2, scene3, scene4, scene5];
+
+function draw(tick) {
+  const sceneIndex = Math.floor(tick / SCENE_DURATION) % scenes.length;
+  const transitionProgress = tick % SCENE_DURATION;
+  const nextSceneIndex = (sceneIndex + 1) % scenes.length;
+
+  if (transitionProgress < TRANSITION_DURATION) {
+    const alpha = 1 - transitionProgress / TRANSITION_DURATION;
+    scenes[nextSceneIndex](tick);
+    fadeOverlay(alpha);
+  } else {
+    scenes[sceneIndex](tick);
+  }
+}
+
+function loop() {
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  ctx.fillRect(0, 0, 512, 512);
+  draw(t);
+  t++;
+  requestAnimationFrame(loop);
+}
+
+function startAudio() {
+  const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+  const sampleRate = ctxAudio.sampleRate;
+  const frameCount = sampleRate * 6;
+  const buffer = ctxAudio.createBuffer(1, frameCount, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < frameCount; i++) {
+    const t = i / sampleRate;
+    const base = Math.sin(t * 220) * 0.3;
+    const melody = Math.sin(t * 440 + Math.sin(t * 2)) * 0.2;
+    const echo = Math.sin(t * 110) * 0.1;
+    data[i] = base + melody + echo;
+  }
+
+  const source = ctxAudio.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  source.connect(ctxAudio.destination);
+  source.start();
+}
+
+document.getElementById("overlay").addEventListener("click", () => {
+  document.getElementById("overlay").remove();
+  startAudio();
+  loop();
+});
+</script>
+</body>
+</html>
