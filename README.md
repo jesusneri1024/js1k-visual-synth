@@ -11,7 +11,7 @@ Includes a loop of animated scenes synchronized with a procedurally generated au
 
 ## ▶️ Live Demo
 
-[Click here to try it](https://yourusername.github.io/js1k-visual-synth)
+[Click here to try it](https://jesusneri1024.github.io/js1k-visual-synth)
 
 ## 🧠 Concept
 
